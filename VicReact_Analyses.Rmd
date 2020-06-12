@@ -1,0 +1,460 @@
+---
+title: "Vic React Data"
+author: "MEKnapp"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# vicarious reactance data
+data <- read.csv('VicData.csv')
+```
+
+```{r}
+# libraries
+library(psych)
+library(jmv)
+library(summarytools)
+library(ggplot2)
+library(dplyr)
+library(plyr)
+library(devtools)
+library(Hmisc)
+library(MVN)
+library(mice)
+library(VIM)
+```
+
+```{r}
+# descriptives
+view(dfSummary(data))
+```
+
+```{r}
+
+# replace all missing values coded as NA with 0  
+cogdat[is.na(cogdat)] <- 0
+for(i in 7:20){
+  data[is.na(data[,i]), i] <- mean(data[,i], na.rm = TRUE)
+}
+```
+
+```{r}
+imputemean <- data[c(7:21, 31)]
+part <- data[c(27:31)]
+describe(part)
+view(dfSummary(part))
+```
+
+```{r}
+part_clean <- finaldat[c(27:31)]
+describe(part_clean)
+view(dfSummary(part_clean))
+```
+
+```{r}
+# mean cognitive coding
+#find sum, find out of greater than 1, divide sum by count column to get unique mean
+
+# subset
+cogdat <- data[c(22:26)]
+
+# revalue -99 (missing) to 0
+cogdat[cogdat == -99] <- 0
+
+# count if great than 0
+cogdat$cognum <- rowSums(cogdat > 0)
+
+# frqeuency adjustment (over counts by 1 without it)
+#cogdat$cognum = cogdat$cognum - 1
+
+# sum
+cogdat$Cog <- (cogdat$Code1 + cogdat$Code2 + cogdat$Code3 + cogdat$Code4 + cogdat$Code5)
+
+# find the mean cognition score
+cogdat$Cognition <- (cogdat$Cog/cogdat$cognum)
+```
+
+```{r}
+# mean imputation for missing data (all variables)
+imputemean[imputemean==-99] <- NA
+
+imputemean$S1_Freedom.imp <- round(with(imputemean, impute(S1_Freedom)), 2)
+imputemean$S2_Frust.imp <- round(with(imputemean, impute(S2_Frust)), 2)
+imputemean$S3_Annoy.imp <- round(with(imputemean, impute(S3_Annoy)), 2)
+imputemean$S4_Disturb.imp <- round(with(imputemean, impute(S4_Disturb)), 2)
+imputemean$S5_Prejd.imp <- round(with(imputemean, impute(S5_Prejd)), 2)
+imputemean$S6_Discr.imp <- round(with(imputemean, impute(S6_Discr)), 2)
+imputemean$S7_Advn.imp <- round(with(imputemean, impute(S7_Advn)), 2)
+imputemean$S8_Intrnt.imp <- round(with(imputemean, impute(S8_Intrnt)), 2)
+imputemean$S9_Compln.imp <- round(with(imputemean, impute(S9_Compln)), 2)
+imputemean$S10_AdvAgnst.imp <- round(with(imputemean, impute(S10_AdvAgnst)) ,2)
+imputemean$Ang1.imp <- round(with(imputemean, impute(Ang1)), 2)
+imputemean$Ang2.imp <- round(with(imputemean, impute(Ang2)), 2)
+imputemean$Ang3.imp <- round(with(imputemean, impute(Ang3)), 2)
+imputemean$Ang4.imp <- round(with(imputemean, impute(Ang4)), 2)
+
+```
+
+```{r}
+
+# subset
+cogfin <- cogdat[c(1:5, 8)]
+
+binddat <- cbind(imputemean, cogfin)
+```
+
+
+```{r}
+# mean score for anger scale (higher is more angry)
+binddat$Anger <- (binddat$Ang1.imp + binddat$Ang2.imp + binddat$Ang3.imp + binddat$Ang4.imp)/4
+
+# reactance
+binddat$Reactance <- (binddat$S1_Freedom.imp + binddat$S2_Frust.imp + binddat$S3_Annoy.imp + binddat$S4_Disturb.imp + binddat$S5_Prejd.imp + binddat$S6_Discr.imp + binddat$S7_Advn.imp + binddat$S8_Intrnt.imp + binddat$S9_Compln.imp + binddat$S10_AdvAgnst.imp)/10
+```
+
+
+```{r}
+# subset and clean based on manipulation check
+
+Self <- subset(binddat, Condition == 'Vignette-Self')
+SELF_Clean <- subset(Self, ManpChk == 1)
+
+Ingroup1 <- subset(binddat, Condition == 'VicariousIn-group:1')
+ING_Clean1 <- subset(Ingroup1, ManpChk == 2)
+
+Ingroup5 <- subset(binddat, Condition == 'VicariousIn-group:5')
+ING_Clean5 <- subset(Ingroup5, ManpChk == 2)
+
+Outgroup1 <- subset(binddat, Condition == 'VicariousOutgroup:1')
+OUTG_Clean1 <- subset(Outgroup1, ManpChk == 4)
+
+Outgroup5 <- subset(binddat, Condition == 'VicariousOutgroup:5')
+OUTG_Clean5 <- subset(Outgroup5, ManpChk == 4)
+
+finaldat <- rbind(SELF_Clean, ING_Clean1, ING_Clean5, OUTG_Clean1, OUTG_Clean5)
+twobytwodat <- rbind(ING_Clean1, ING_Clean5, OUTG_Clean1, OUTG_Clean5)
+
+```
+
+
+```{r}
+
+# reverse code the cognition measure in all data sets
+
+finaldat$Cognition.R <- (4 - finaldat$Cognition)
+twobytwodat$Cognition.R <- (4 - twobytwodat$Cognition)
+SELF_Clean$Cognition.R <- (4 - SELF_Clean$Cognition)
+ING_Clean1$Cognition.R <- (4 - ING_Clean1$Cognition)
+ING_Clean5$Cognition.R <- (4 - ING_Clean5$Cognition)
+OUTG_Clean1$Cognition.R <- (4 - OUTG_Clean1$Cognition)
+OUTG_Clean5$Cognition.R <- (4 - OUTG_Clean5$Cognition)
+
+
+# intertwined reatance measure
+finaldat$ReactComb <- (finaldat$Anger + finaldat$Cognition.R)/2
+twobytwodat$ReactComb <- (twobytwodat$Anger + twobytwodat$Cognition.R)/2
+SELF_Clean$ReactComb <- (SELF_Clean$Anger + SELF_Clean$Cognition.R)/2
+ING_Clean1$ReactComb <- (ING_Clean1$Anger + ING_Clean1$Cognition.R)/2
+ING_Clean5$ReactComb <- (ING_Clean5$Anger + ING_Clean5$Cognition.R)/2
+OUTG_Clean1$ReactComb <- (OUTG_Clean1$Anger + OUTG_Clean1$Cognition.R)/2
+OUTG_Clean5$ReactComb <- (OUTG_Clean5$Anger + OUTG_Clean5$Cognition.R)/2
+
+```
+
+
+```{r}
+descriptives(finaldat, vars = c("Cognition.R"), splitBy = 'Condition', sd = TRUE, skew = TRUE, kurt = TRUE)
+```
+
+
+```{r}
+
+# For just 2x2 factorial, not considering hanging control group
+
+
+#recode condition into dummy variables
+twobytwodat$Proportion <- revalue(twobytwodat$Condition, c("VicariousIn-group:1" = 'One', "VicariousIn-group:5" = 'Five', "VicariousOutgroup:1" = 'One', "VicariousOutgroup:5" = 'Five'))
+
+twobytwodat$Group <- revalue(twobytwodat$Condition, c("VicariousIn-group:1" = 'Ingroup', "VicariousIn-group:5" = 'Ingroup', "VicariousOutgroup:1" = 'Outgroup', "VicariousOutgroup:5" = 'Outgroup'))
+
+finaldat$Proportion <- revalue(finaldat$Condition, c("VicariousIn-group:1" = 'One', "VicariousIn-group:5" = 'Five', "VicariousOutgroup:1" = 'One', "VicariousOutgroup:5" = 'Five', "Vignette-Self" = 'Self'))
+finaldat$Group <- revalue(finaldat$Condition, c("VicariousIn-group:1" = 'Ingroup', "VicariousIn-group:5" = 'Ingroup', "VicariousOutgroup:1" = 'Outgroup', "VicariousOutgroup:5" = 'Outgroup', "Vignette-Self" = 'Self'))
+
+
+# If dataset returns additional level (self) which is no longer present, removing using droplevels() and check with unique()
+twobytwodat$Proportion.N <- droplevels(twobytwodat$Proportion)
+unique(twobytwodat$Proportion.N)
+
+twobytwodat$Group.N <- droplevels(twobytwodat$Group)
+unique(twobytwodat$Group.N)
+```
+
+
+```{r}
+
+
+aov1.all <- jmv::ANOVA(data = twobytwodat, dep = c('Anger'), factors = c('Proportion.N', 'Group.N'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group.N'), postHocCorr = 'tukey')
+aov1.all
+
+aov1.2 <- jmv::ANOVA(data = twobytwodat, dep = c('ReactComb'), factors = c('Proportion.N', 'Group.N'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group.N'), postHocCorr = 'tukey')
+aov1.2
+
+aov2 <- jmv::ANOVA(data = twobytwodat, dep = c('Cognition.R'), factors = c('Proportion.N', 'Group.N'), effectSize = 'partEta', homo = TRUE)
+aov2
+
+aov3 <- ANOVA(data = twobytwodat, dep = c('Reactance'), factors = c('Proportion.N', 'Group.N'), effectSize = 'partEta', homo = TRUE, postHoc = c('Proportion.N', 'Group.N'), postHocCorr = 'tukey')
+aov3
+
+
+```
+
+
+```{r}
+#library(DescTools)
+DunnettTest(Reactance ~ Condition, data = finaldat, control = 'Vignette-Self')
+DunnettTest(Anger ~ Condition, data = finaldat, control = 'Vignette-Self')
+DunnettTest(Cognition.R ~ Condition, data = finaldat, control = 'Vignette-Self')
+DunnettTest(ReactComb ~ Condition, data = finaldat, control = 'Vignette-Self')
+
+descriptives(twobytwodat, vars = c('ReactComb'), splitBy = 'Group.N', sd = TRUE, se = TRUE, skew = TRUE, kurt = TRUE)
+
+DunnettTest(Cognition ~ Condition, data = binddat, control = 'Vignette-Self')
+descriptives(binddat, vars = c('Cognition'), splitBy = 'Condition', sd = TRUE, se = TRUE, skew = TRUE, kurt = TRUE)
+
+
+```
+
+```{r}
+# Group level data (self, ingroup, outgroup)
+
+aov.g.a <- jmv::ANOVA(data = finaldat, dep = c('Anger'), factors = c('Group'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group'), postHocCorr = 'tukey')
+aov.g.a
+
+aov.g.c <- jmv::ANOVA(data = finaldat, dep = c('Cognition.R'), factors = c('Group'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group'), postHocCorr = 'tukey')
+aov.g.c
+
+anovaOneW(finaldat, deps = c('Cognition.R'), group = c('Group'), welchs = TRUE, phMethod = 'gamesHowell', phSig = TRUE, phTest = TRUE, desc = TRUE)
+
+
+aov.g.r <- ANOVA(data = finaldat, dep = c('Reactance'), factors = c('Group'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group'), postHocCorr = 'tukey')
+aov.g.r
+
+anovaOneW(finaldat, deps = c('Reactance'), group = c('Group'), welchs = TRUE, phMethod = 'gamesHowell', phSig = TRUE, phTest = TRUE, desc = TRUE)
+
+aov.g.rc <- ANOVA(data = finaldat, dep = c('ReactComb'), factors = c('Group'), effectSize = 'partEta', homo = TRUE, postHoc = c('Group'), postHocCorr = 'tukey')
+aov.g.rc
+
+```
+
+```{r}
+# Run prior to creating bar graphs in order to have SE bars
+
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+    library(plyr)
+
+    # New version of length which can handle NA's: if na.rm==T, don't count them
+    length2 <- function (x, na.rm=FALSE) {
+        if (na.rm) sum(!is.na(x))
+        else       length(x)
+    }
+
+    # This does the summary. For each group's data frame, return a vector with
+    # N, mean, and sd
+    datac <- ddply(data, groupvars, .drop=.drop,
+      .fun = function(xx, col) {
+        c(N    = length2(xx[[col]], na.rm=na.rm),
+          mean = mean   (xx[[col]], na.rm=na.rm),
+          sd   = sd     (xx[[col]], na.rm=na.rm)
+        )
+      },
+      measurevar
+    )
+
+    # Rename the "mean" column    
+    datac <- rename(datac, c("mean" = measurevar))
+
+    datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+
+    # Confidence interval multiplier for standard error
+    # Calculate t-statistic for confidence interval: 
+    # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+    ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+    datac$ci <- datac$se * ciMult
+
+    return(datac)
+}
+```
+
+
+```{r}
+descriptives(finaldat, vars = c('Cognition.R', 'Anger', 'Reactance', 'ReactComb'), splitBy = 'Group', sd = TRUE, se = TRUE, skew = TRUE, kurt = TRUE)
+```
+
+```{r}
+# plots for each DV by condition for group 
+
+##### Negative Cognitions
+
+d=data.frame(Group=c("Ingroup","Outgroup","Self"), mean=c(2.11,2.19,2.61), lower1 = c(2.06, 2.12, 2.57), upper1 = c(2.16, 2.26, 2.65))
+
+bar1 <- ggplot(d, aes(x = Group, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5, size = 1) +
+  theme_apa() +
+  geom_errorbar(aes(ymin = upper1, ymax = lower1, width = 0.1)) + 
+  ylab('Negative Cognitions') + 
+  scale_y_continuous(breaks=c(0,1,2,3)) + 
+  expand_limits(y=c(0,3))
+
+bar1 
+
+
+##### Reactance
+
+d1=data.frame(Group=c("Ingroup","Outgroup","Self"), mean=c(3.18,2.52,3.84), lower = c(3.10, 2.38, 3.74), upper = c(3.26, 2.66, 3.94))
+
+bar2 <- ggplot(d1, aes(x = Group, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5) +
+  theme_apa() +
+  geom_errorbar(aes(ymin=upper, ymax=lower), width = .1, size = .5) + 
+  ylab('Reactance') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))
+
+bar2
+
+
+##### Anger
+d3=data.frame(Group=c("Ingroup","Outgroup","Self"), mean=c(2.84,2.33,3.86), lower = c(2.74, 2.18, 3.72), upper = c(2.94, 2.48, 3.90))
+
+bar3 <- ggplot(d3, aes(x = Group, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5) +
+  theme_apa() +
+  geom_errorbar(aes(ymin=upper, ymax=lower), width = .1, size = .5)+ 
+  ylab('Anger') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))
+
+bar3
+
+
+##### ReactComb
+d4=data.frame(Group=c("Ingroup","Outgroup","Self"), mean=c(2.47, 2.26, 3.23), lower = c(2.42, 2.17, 3.15), upper = c(2.52, 2.35, 3.31))
+
+bar4 <- ggplot(d4, aes(x = Group, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5) +
+  theme_apa() +
+  geom_errorbar(aes(ymin=upper, ymax=lower), width = .1, size = .5)+ 
+  ylab('Intertwined Reactance') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))
+
+bar4
+
+#library(gridExtra)
+plot1 <- grid.arrange(bar2, bar3, 
+                     bar1, bar4, ncol = 2, nrow = 2)
+ggsave(file="Study2_Group.New.jpg", plot1)
+
+```
+
+
+```{r}
+# Magnitude level dat (self, one, five)
+
+aov.g.a <- jmv::ANOVA(data = finaldat, dep = c('Anger'), factors = c('magnitude'), effectSize = 'partEta', homo = TRUE, postHoc = c('magnitude'), postHocCorr = 'tukey')
+aov.g.a
+
+aov.g.c <- jmv::anova(data = finaldat, dep = c('Cognition'), factors = c('magnitude'), effectSize = 'partEta', homo = TRUE, postHoc = c('magnitude'), postHocCorr = 'tukey')
+aov.g.c
+
+anovaOneW(finaldat, deps = c('Cognition'), group = c('magnitude'), welchs = TRUE, phMethod = 'gamesHowell', phSig = TRUE, phTest = TRUE, desc = TRUE)
+
+
+aov.g.r <- ANOVA(data = finaldat, dep = c('Reactance'), factors = c('magnitude'), effectSize = 'partEta', homo = TRUE, postHoc = c('magnitude'), postHocCorr = 'tukey')
+aov.g.r
+
+anovaOneW(finaldat, deps = c('Reactance'), group = c('magnitude'), welchs = TRUE, phMethod = 'gamesHowell', phSig = TRUE, phTest = TRUE, desc = TRUE)
+
+
+```
+
+```{r}
+descriptives(finaldat, vars = c('Cognition.R', 'Anger', 'Reactance', 'ReactComb'), splitBy = 'Proportion', sd = TRUE, se = TRUE, skew = TRUE, kurt = TRUE)
+
+```
+
+
+```{r}
+# plots for each DV by condition for magnitude 
+
+#### Cognition
+d5=data.frame(Proportion=c("One","Five","Self"), mean=c(2.19, 2.08, 2.61), lower = c(2.14, 2.03, 2.57), upper = c(2.24, 2.13, 2.65))
+
+bar5 <- ggplot(d5, aes(x = Proportion, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5, size = 1) +
+  theme_apa() +
+  geom_errorbar(aes(ymin = upper, ymax = lower, width = 0.1)) + 
+  ylab('Negative Cognitions') + 
+  scale_y_continuous(breaks=c(0,1,2,3)) + 
+  expand_limits(y=c(0,3)) + 
+  scale_x_discrete(limits=c('One','Five','Self'))
+
+bar5 
+
+
+##### Anger
+d6=data.frame(Proportion=c("One","Five","Self"), mean=c(2.58, 2.74, 3.86), lower = c(2.47, 2.61, 3.72), upper = c(2.69, 2.87, 4.00))
+
+bar6 <- ggplot(d6, aes(x = Proportion, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5, size = 1) +
+  theme_apa() +
+  geom_errorbar(aes(ymin = upper, ymax = lower, width = 0.1)) + 
+  ylab('Anger') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))+ 
+  scale_x_discrete(limits=c('One','Five','Self'))
+
+bar6 
+
+#### Reactance
+d7=data.frame(Proportion=c("One","Five","Self"), mean=c(2.79, 3.11, 3.84), lower = c(2.69, 3.00, 3.74), upper = c(2.89, 3.22, 3.94))
+
+bar7 <- ggplot(d7, aes(x = Proportion, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5, size = 1) +
+  theme_apa() +
+  geom_errorbar(aes(ymin = upper, ymax = lower, width = 0.1)) + 
+  ylab('Reactance') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))+ 
+  scale_x_discrete(limits=c('One','Five','Self'))
+
+bar7
+
+
+#### Intertwiined Reactance
+d8=data.frame(Proportion=c("One","Five","Self"), mean=c(2.38, 2.41, 3.23), lower = c(2.32, 2.34, 3.15), upper = c(2.44, 2.48, 3.31))
+
+bar8 <- ggplot(d8, aes(x = Proportion, y = mean)) +
+  geom_bar(stat='identity', fill = 'grey', width = 0.5, size = 1) +
+  theme_apa() +
+  geom_errorbar(aes(ymin = upper, ymax = lower, width = 0.1)) + 
+  ylab('Intertwined Reactance') + 
+  scale_y_continuous(breaks=c(0,1,2,3,4,5)) + 
+  expand_limits(y=c(0,5))+ 
+  scale_x_discrete(limits=c('One','Five','Self'))
+
+bar8
+
+
+plot <- grid.arrange(bar7, bar6,
+                     bar5, bar8, ncol = 2, nrow = 2)
+ggsave(file="Study2_Pro.New.jpg", plot)
+
+```
+
+
